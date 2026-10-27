@@ -1,15 +1,16 @@
 # Secure AKS GitOps Platform
 
 A small, reproducible Azure platform: **Terraform** builds a hub-and-spoke network and an **AKS** cluster
-(Entra ID RBAC, workload identity, Key Vault CSI), **GitHub Actions** deploys it with **OIDC** (no stored
-credentials), and **ArgoCD** (app-of-apps) keeps everything inside the cluster in sync with this repo.
+(Entra ID RBAC, workload identity, Key Vault CSI), **GitHub Actions** deploys it using a service principal
+client secret stored in GitHub Actions secrets, and **ArgoCD** (app-of-apps) keeps everything inside the cluster
+in sync with this repo.
 
 > Status: work in progress, built as a learning project. See [Roadmap](#roadmap) and [Known gaps](#known-gaps).
 
 ## What this demonstrates
 
-- Infrastructure as code with remote state in Azure Storage, accessed via Entra ID (no keys in CI)
-- Passwordless CI/CD: GitHub OIDC federated credentials, plan on PR, apply on merge, manual destroy
+- Infrastructure as code with remote state in Azure Storage, accessed via Entra ID (no storage keys in CI)
+- CI/CD with a service principal secret stored in GitHub Actions secrets: plan on PR, apply on merge, manual destroy
 - Hub-and-spoke networking, NSGs, private DNS, optional private endpoint for Key Vault
 - AKS with Azure CNI Overlay + Cilium, Entra ID RBAC, workload identity, Key Vault CSI driver
 - GitOps with ArgoCD app-of-apps, Prometheus/Grafana, and Kyverno guardrails
@@ -20,7 +21,7 @@ credentials), and **ArgoCD** (app-of-apps) keeps everything inside the cluster i
 ```mermaid
 flowchart LR
   dev([Developer]) -->|PR / merge| gh[GitHub repo]
-  gh -->|OIDC token| gha[GitHub Actions]
+  gh -->|service principal secret| gha[GitHub Actions]
   gha -->|terraform plan / apply| az
 
   subgraph az[Azure subscription]
@@ -45,7 +46,7 @@ flowchart LR
 
 ```
 .
-├── bootstrap/            one-time: tfstate storage, GitHub OIDC identity, Entra admin group, budget alert
+├── bootstrap/            one-time: tfstate storage, Entra admin group, budget alert (also contains legacy OIDC setup)
 ├── terraform/
 │   ├── modules/          network, keyvault, aks, workload-identity
 │   └── envs/dev/         wires the modules together and installs ArgoCD via Helm
@@ -75,11 +76,22 @@ ArgoCD) because ArgoCD pulls from GitHub.
    cd ..
    ```
    The bootstrap state stays local (it contains storage keys) and is git-ignored. Keep a private backup.
-3. **Give GitHub the non-secret identifiers** (client/tenant/subscription IDs, state storage, admin group):
+3. **Configure GitHub Actions credentials and variables.** Add these repository secrets in
+   **Settings -> Secrets and variables -> Actions -> Secrets**:
+   - `AZURE_CLIENT_ID` — client/application ID for your Terraform service principal
+   - `AZURE_CLIENT_SECRET` — that service principal's client secret
+   - `AZURE_TENANT_ID` — its Entra tenant ID
+   - `AZURE_SUBSCRIPTION_ID` — the target subscription ID
+
+   Do not paste the client secret into the terminal command or commit it to the repository. Add the
+   non-secret Terraform state and AKS identifiers as repository variables:
    ```bash
    gh auth login
    scripts/set-github-vars.sh PSamardzhiev/aks-gitops-platform ps01   # ps01 = your unique suffix
    ```
+   The service principal needs permissions to manage the platform resources, create required role assignments,
+   and access the Terraform state container. The bootstrap's previous OIDC application is not used by these
+   workflows.
 4. **Create a `dev` environment** in the repo settings (optionally add yourself as a required reviewer for apply).
 5. **Deploy:** open a pull request (the pipeline runs checks and a plan), then merge to apply.
    Or run the first apply locally - see [docs/runbook.md](docs/runbook.md).
@@ -95,7 +107,7 @@ AKS control plane is on the free tier, but the nodes are not. Budget alerts are 
 
 | ADR | Decision |
 |---|---|
-| [0001](docs/adr/0001-github-oidc-instead-of-secrets.md) | GitHub OIDC federation instead of stored credentials |
+| [0001](docs/adr/0001-github-oidc-instead-of-secrets.md) | Original OIDC decision (superseded by GitHub Actions secrets) |
 | [0002](docs/adr/0002-azure-cni-overlay-with-cilium.md) | Azure CNI Overlay with Cilium |
 | [0003](docs/adr/0003-hub-spoke-without-firewall.md) | Hub-and-spoke network without Azure Firewall (for now) |
 | [0004](docs/adr/0004-argocd-bootstrap-via-terraform.md) | ArgoCD bootstrapped by Terraform, then GitOps takes over |

@@ -81,7 +81,8 @@ Switch a policy to `Enforce` only after the reports are clean.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `AADSTS70021: No matching federated identity record` | OIDC subject does not match | Compare the subject in the error with the credentials in `bootstrap/main.tf` (repo name, `main`, `pull_request`, `environment:dev`) |
+| Terraform init or Azure login reports missing client credentials | GitHub Actions secrets are absent or unavailable to the workflow | Configure `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` in repository Actions secrets |
+| `AuthorizationFailed` for role assignments | Service principal lacks permission to create role assignments | Grant the principal an appropriate role-assignment permission at the required scope |
 | Key Vault name already in use / soft-deleted | Names are global; deleted vaults are retained | Change `unique_suffix`, or `az keyvault purge --name <name>` |
 | VM size / quota error during AKS create | Region or subscription quota | `az vm list-usage -l westeurope -o table`; change `system_node_vm_size` or `location` |
 | Plan fails with *cluster unreachable* | Helm provider before cluster exists | `terraform apply -target=module.aks`, then full apply |
@@ -93,5 +94,5 @@ Switch a policy to `Enforce` only after the reports are clean.
 
 ## Tear down
 
-Actions -> **terraform-destroy** -> type `destroy`. The bootstrap resources (state, OIDC app, group, budget)
-remain; remove them with `terraform destroy` in `bootstrap/` when you are completely done.
+Actions -> **terraform-destroy** -> type `destroy`. The bootstrap resources (state, legacy OIDC app, group,
+budget) remain; remove them with `terraform destroy` in `bootstrap/` when you are completely done.

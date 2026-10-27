@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # OIDC token for Azure; no stored credentials
 
 concurrency:
   group: terraform-${{ github.ref }}
@@ -23,10 +22,11 @@ env:
   TF_VERSION: "1.9.8"
   TF_DIR: terraform/envs/dev
   TF_IN_AUTOMATION: "true"
-  ARM_USE_OIDC: "true"
-  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: "false"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   TF_VAR_aks_admin_group_object_id: ${{ vars.AKS_ADMIN_GROUP_OBJECT_ID }}
   TF_VAR_unique_suffix: ${{ vars.UNIQUE_SUFFIX }}
 

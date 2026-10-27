@@ -1,6 +1,6 @@
 # ADR 0001: GitHub OIDC federation instead of stored credentials
 
-Status: draft (rewrite in your own words and adjust to what you actually decided)
+Status: superseded (2026-10-27)
 
 ## Context
 GitHub Actions needs to deploy to Azure. My earlier AWS project (UpSkillDevOpsProject) used long-lived access
@@ -22,3 +22,12 @@ GitHub and exchange it for an Azure token. Three subjects are trusted: pull requ
 ## Alternatives considered
 - Service principal secret in GitHub secrets: simpler, but long-lived and the exact weakness I wanted to remove.
 - Self-hosted runner with a managed identity: strongest, but costs a VM and adds maintenance.
+
+## Current implementation
+The workflows now authenticate with an existing service principal using the
+`AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, and
+`AZURE_SUBSCRIPTION_ID` GitHub Actions secrets. This is a deliberate operational
+trade-off to use the available Terraform identity. The secret must be rotated
+before expiry and the principal should have only the permissions the deployment
+requires. The OIDC resources in `bootstrap/` are legacy and are not used by the
+workflows.

@@ -13,9 +13,9 @@ terraform {
   }
 }
 
-# Subscription/tenant/client come from ARM_* environment variables:
+# Subscription/tenant/client credentials come from ARM_* environment variables:
 #   locally:  export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-#   in CI:    set by .github/workflows/terraform.yml (OIDC)
+#   in CI:    GitHub Actions secrets, set by .github/workflows/terraform.yml
 provider "azurerm" {
   features {
     resource_group {
