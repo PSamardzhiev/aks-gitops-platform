@@ -1,0 +1,34 @@
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.17"
+    }
+  }
+}
+
+# Subscription/tenant/client come from ARM_* environment variables:
+#   locally:  export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+#   in CI:    set by .github/workflows/terraform.yml (OIDC)
+provider "azurerm" {
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.aks.kube_admin_host
+    client_certificate     = base64decode(module.aks.kube_admin_client_certificate)
+    client_key             = base64decode(module.aks.kube_admin_client_key)
+    cluster_ca_certificate = base64decode(module.aks.kube_admin_cluster_ca_certificate)
+  }
+}

@@ -1,0 +1,125 @@
+name: terraform
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for Azure; no stored credentials
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.9.8"
+  TF_DIR: terraform/envs/dev
+  TF_IN_AUTOMATION: "true"
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_aks_admin_group_object_id: ${{ vars.AKS_ADMIN_GROUP_OBJECT_ID }}
+  TF_VAR_unique_suffix: ${{ vars.UNIQUE_SUFFIX }}
+
+jobs:
+  checks:
+    name: fmt / validate / lint / security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Format
+        run: terraform fmt -check -recursive -diff .
+
+      - name: Validate (no backend, no credentials)
+        run: |
+          for dir in bootstrap terraform/envs/dev; do
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint
+        run: tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl"
+
+      # soft_fail while you triage findings. Once clean (or each remaining
+      # finding is skipped WITH a written reason), set soft_fail: false.
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          framework: terraform
+          quiet: true
+          soft_fail: true
+
+  plan:
+    name: plan
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Init
+        run: |
+          terraform -chdir="$TF_DIR" init -input=false \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}"
+
+      - name: Plan
+        run: terraform -chdir="$TF_DIR" plan -input=false -no-color -lock-timeout=5m | tee /tmp/plan.txt
+
+      - name: Publish plan to job summary
+        if: always()
+        run: |
+          {
+            echo '### Terraform plan'
+            echo '```'
+            tail -c 60000 /tmp/plan.txt 2>/dev/null || echo "no plan output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  apply:
+    name: apply (main only)
+    needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Add required reviewers to the "dev" environment in repo settings for a manual approval gate.
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Init
+        run: |
+          terraform -chdir="$TF_DIR" init -input=false \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}"
+
+      - name: Apply
+        run: terraform -chdir="$TF_DIR" apply -auto-approve -input=false -lock-timeout=5m

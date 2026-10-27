@@ -1,0 +1,22 @@
+# Enable with:  git mv gitops/optional/sample-app-keyvault.yaml gitops/apps/
+# (after running scripts/configure-gitops.sh and creating the secret - see docs/runbook.md)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-keyvault
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/PSamardzhiev/aks-gitops-platform.git
+    targetRevision: main
+    path: gitops/workloads/sample-app-keyvault
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

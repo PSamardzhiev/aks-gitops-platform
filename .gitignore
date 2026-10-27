@@ -1,0 +1,19 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+# keep .terraform.lock.hcl committed (pins provider versions)
+
+# Misc
+.DS_Store
+.vscode/
+*.pem
+*.key
+kubeconfig*

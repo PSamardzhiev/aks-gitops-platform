@@ -1,0 +1,41 @@
+# Cost control: a stopped AKS cluster does not bill for its VMs.
+# Stops the cluster every evening; run manually with action=start to resume.
+# Note: GitHub disables scheduled workflows after 60 days without repo activity.
+name: aks-power
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: start or stop the cluster
+        type: choice
+        options: [stop, start]
+        default: stop
+  schedule:
+    - cron: "0 20 * * *" # 20:00 UTC daily -> stop
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RG: rg-aksgitops-dev
+  CLUSTER: aks-aksgitops-dev
+
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Start or stop
+        run: |
+          if ! az aks show -g "$RG" -n "$CLUSTER" >/dev/null 2>&1; then
+            echo "Cluster $CLUSTER not found - nothing to do."
+            exit 0
+          fi
+          az aks ${{ inputs.action || 'stop' }} -g "$RG" -n "$CLUSTER"

@@ -1,0 +1,5 @@
+unique_suffix             = "ps01"                                   # your initials + digits
+aks_admin_group_object_id = "00000000-0000-0000-0000-000000000000"   # terraform output in bootstrap/
+# location                 = "westeurope"
+# spot_node_pool_enabled   = false
+# enable_keyvault_private_endpoint = false
