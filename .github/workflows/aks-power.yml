@@ -1,6 +1,5 @@
 # Cost control: a stopped AKS cluster does not bill for its VMs.
-# Stops the cluster every evening; run manually with action=start to resume.
-# Note: GitHub disables scheduled workflows after 60 days without repo activity.
+# Manual only: run with action=stop or action=start.
 name: aks-power
 
 on:
@@ -11,8 +10,6 @@ on:
         type: choice
         options: [stop, start]
         default: stop
-  schedule:
-    - cron: "0 20 * * *" # 20:00 UTC daily -> stop
 
 permissions:
   contents: read

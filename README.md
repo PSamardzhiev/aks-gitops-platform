@@ -14,7 +14,7 @@ in sync with this repo.
 - Hub-and-spoke networking, NSGs, private DNS, optional private endpoint for Key Vault
 - AKS with Azure CNI Overlay + Cilium, Entra ID RBAC, workload identity, Key Vault CSI driver
 - GitOps with ArgoCD app-of-apps, Prometheus/Grafana, and Kyverno guardrails
-- Cost discipline: budget alerts, auto-stop schedule, teardown workflow
+- Cost discipline: budget alerts, manual stop/start, teardown workflow
 
 ## Architecture
 
@@ -100,7 +100,7 @@ ArgoCD) because ArgoCD pulls from GitHub.
 ## Cost control
 
 AKS control plane is on the free tier, but the nodes are not. Budget alerts are created by `bootstrap/`
-(they warn, they do not stop spending). The `aks-power` workflow stops the cluster every evening. Use
+(they warn, they do not stop spending). The `aks-power` workflow provides manual stop/start only; automatic stopping is disabled. Use
 **Actions -> terraform-destroy** when you are done for a while. Details and rough numbers: [docs/cost.md](docs/cost.md).
 
 ## Design decisions

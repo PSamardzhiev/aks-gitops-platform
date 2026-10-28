@@ -19,7 +19,7 @@ Rough, order-of-magnitude figures for West Europe, pay-as-you-go. **Prices chang
 ## Controls in this repo
 
 - `bootstrap/` creates a monthly **budget** with alerts at 50% and 80% actual and 100% forecast. Alerts only warn; they do not stop resources.
-- `aks-power` stops the cluster every evening (20:00 UTC). A stopped cluster does not bill for node VMs; disks and the public IP still cost a little.
+- `aks-power` provides manual stop/start only; automatic stopping is disabled. Stop the cluster manually when it is not needed. A stopped cluster does not bill for node VMs; disks and the public IP still cost a little.
 - `terraform-destroy` removes the whole dev environment. Rebuilding takes roughly 15-25 minutes.
 
 ## Habits
